@@ -1,0 +1,8 @@
+{
+    "packages" : ["numpy"],
+    "files": {
+        "calisson.py": "./calisson.py", 
+        "gen_calisson.py": "./gen_calisson.py",
+        "html_calisson.py": "./html_calisson.py"
+    }
+}

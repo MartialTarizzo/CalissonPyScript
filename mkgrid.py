@@ -1,6 +1,6 @@
 # %%
 import time
-from gen_calisson import randomEnigma2
+from gen_calisson import randomEnigma2, randomEnigma_fromConstraints_incremental
 from html_calisson import make_url
 import pyscript
 
@@ -18,6 +18,7 @@ def mkGrid(event):
 
     deb = time.monotonic()
     enigme = randomEnigma2(n, [], trace = True, easy = eas)
+    # enigme = randomEnigma_fromConstraints_incremental(n, True)
     elem_info.innerText = f"Grille calculée en {time.monotonic()-deb:.2f} s"
     
     url = make_url(enigme, n)

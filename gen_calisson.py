@@ -107,50 +107,108 @@ def make_random_config(n, nbCubes = 0, trace = False):
 
 # Deuxième méthode à partir d'un empilement
 def randomEnigma2(n, konfig = [], trace = False, easy = 0):
+    # l'ensemble des extrémités des arêtes placée dans l'énigme
+    node2DSet = set()
+    # la liste des arêtes 2D rejetées lors de la première passe
+    arRejected = []
 
-    def norme(enc):
-        x, y, z = enc[:3]
-        return abs(x) + abs(y) + abs(z)
+    def ar3Dconnected(a):
+        """
+        retourne (True, False) si une des extrémités 2D de l'arête est dans l'ensemble node2DSet
+        """
+        
+        def onHexEdge(x, y):
+            # est-on sur un bord de l'hexagone ?
+            return abs(x)==n or 2*n - abs(x) == abs(y)
 
+        org2D = tuple(projection([a[0], a[1], a[2]]))
+        if org2D in node2DSet or onHexEdge(*org2D):
+            return True
+
+        x, y = org2D
+        d = a[3]
+        if d=="x":
+            dest2D = (x-1, y-1)
+        if d=="y":
+            dest2D =  (x+1, y-1)
+        if d=="z":
+            dest2D = (x, y+2)
+        
+        if dest2D in node2DSet or onHexEdge(*dest2D):
+                return True
+
+        node2DSet.add(org2D)
+        node2DSet.add(dest2D)
+        return False
+
+    # Fabrication de l'empilement aléatoire 3D
     konf = make_random_config(n)
     mat = matrice_jeu(konf)
     enc = encodage(mat)
-#    encSol3D = encodeSolution3D(enc)
-    encSol3D = sorted(encodeSolution3D(enc), key=norme, reverse=True)
+    encSol3D = encodeSolution3D(enc) 
 
+    if trace : print(f"Empilement de taille {n} terminé")
+
+    # remplissage d'une configuration initialement vide avec les arêtes
     mp = -np.ones((n,n,n), dtype='int')
     lar3D = []
-
     idx = 0
+
+    # première passe : on ne place que des arêtes isolées 
+    # non accrochées sur le bord de l'hexagone
     while len(encSol3D) > 0 and -1 in mp:
-        idx = (idx + 9) % len(encSol3D)
-        #ar = rd.choice(encSol3D)
-        ar = encSol3D[idx]
+        ar = rd.choice(list(encSol3D))
+        encSol3D.remove(ar)
+        if ar3Dconnected(ar):
+            arRejected.append(ar)
+            continue
         r, mp2 = placeSommet(*ar, mp)
-        if np.any(mp - mp2):
+        if np.any(mp - mp2):    # l'arête modifie la config
             lar3D.append(ar)
             mp = mp2
-        encSol3D.remove(ar)
+
+    if trace : print(f"Première passe : {len(lar3D)} arêtes")
+
+    # s'il reste des cubes indéterminés, c'est qu'on a épuisé
+    # la liste des arêtes en rejetant trop d'arêtes connectées.
+    # on place donc des arêtes connectées pour lever les 
+    # indéterminations.
+    while -1 in mp:
+        ar = rd.choice(arRejected)
+        r, mp2 = placeSommet(*ar, mp)
+        if np.any(mp - mp2):    # l'arête modifie la config
+            lar3D.append(ar)
+            mp = mp2
+        arRejected.remove(ar)
+
+    if trace : print(f"Ajout d'arêtes pour lever les indéterminations : {len(lar3D)} arêtes")
     
+    # Ajout d'arêtes supplémentaires en fonction de la facilité de la grille
+    encSol3D = list(encSol3D) + arRejected
     for _ in range(easy * len(encSol3D) // 10):
-        if len(encSol3D) < 3:
-            break
-        idx = (idx + 9) % len(encSol3D)
-        #ar = rd.choice(encSol3D)
-        ar = encSol3D[idx]
+        # idx = (idx + 123321) % len(encSol3D)
+        ar = rd.choice(list(encSol3D))
+        # ar = encSol3D[idx]
         lar3D.append(ar)
         encSol3D.remove(ar)
 
+
+    if trace : print(f"ajout/facilité : {len(lar3D)} arêtes")
+
+
+    # plus aucun cube indéterminé. Construction de l'énigme 2D
     enigme = []
     for a in lar3D:
         p = projection([a[0], a[1], a[2]])
         p.append(a[3])
         enigme.append(tuple(p))
 
-    enigme = randomEnigma_fromConstraints(n, trace, enigme)
+    if trace : print(f"énigme construite")
+
+    # Vérification/modification de l'énigme pour que la solution soit unique
+    enigme = randomEnigma_fromConstraints(n, True, enigme)
     
     return enigme
-
 
 
 # %% Genération version 3 : en ne partant pas d'un empilement, mais créant une grille à partir de contraintes
